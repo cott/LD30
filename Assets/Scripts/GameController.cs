@@ -55,14 +55,14 @@ public class GameController : MonoBehaviour {
 	public bool AddRandos(int diff) {
 		if (Randos + diff < 0) { return false; } // TODO wut
 		Randos += diff;
-		RandoCounter.text = "Randos: " + Randos;
+		RandoCounter.text = "Civilians: " + Randos;
 		return true;
 	}
 	
 	public bool AddTroops(int diff) {
 		Troops += diff;
 		if (Troops < 0) { Troops = 0; }
-		TroopCounter.text = "Troops: " + Troops;
+		TroopCounter.text = "Soldiers: " + Troops;
 		
 		if (Troops == 0)
 			GameOver();
@@ -148,6 +148,7 @@ public class GameController : MonoBehaviour {
 		invokeMode = true;
 		if (myTurn) {
 			NewHeroButton.SetActive(true);
+			EndTurnButton.SetActive(true);
 		}
 	}
 	
@@ -232,6 +233,7 @@ public class GameController : MonoBehaviour {
 	
 		// hide button during HeroSelect phase
 		NewHeroButton.SetActive(false);
+		EndTurnButton.SetActive(false);
 		NewHeroMode = true;
 		Debug.Log("!!!!!!! enter NewHeroMode !!!!!!!");
 		
@@ -250,7 +252,7 @@ public class GameController : MonoBehaviour {
 		CardLogic warrior = drawWarrior();
 		CardLogic worker = drawWorker();
 		
-		ActionBannerText.text = "go to work: " + worker.Description + "\ngo to war: " + warrior.Description;
+		ActionBannerText.text = "In the Homeland: " + worker.Description + "\n\nOn the Battlefield: " + warrior.Description;
 		
 		// check for empty war slots
 		foreach (CardController card in WarCards) {
