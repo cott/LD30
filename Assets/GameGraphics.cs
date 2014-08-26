@@ -9,8 +9,5 @@ public class GameGraphics : MonoBehaviour {
 	
 	// Use this for initialization
 	void Start () {
-		EnemySprites = Resources.LoadAll<Sprite>("enemies 1");
-		WarSprites = Resources.LoadAll<Sprite>("war");
-		HomeSprites = Resources.LoadAll<Sprite>("home");
 	}
 }

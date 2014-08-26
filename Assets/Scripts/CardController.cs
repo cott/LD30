@@ -111,6 +111,7 @@ public class CardController : MonoBehaviour {
 	}
 	public void RefreshGraphics(){
 		// render monster (if monster)
+		Debug.Log("HOME SPRITES LENGTH ********* " + graphics.WarSprites.Length);
 		Avatar.enabled = true;
 		if (Logic == null) {
 			Avatar.enabled = false;
