@@ -8,48 +8,71 @@ public class CardLogic {
 	
 	public delegate void InvokeFunc(GameController game, CardController target);
 	
-	private int TroopCost = 0;
-	private int RandoCost = 0;
+	public int TroopCost = 0;
+	public int RandoCost = 0;
 	private InvokeFunc invokeFunc;
 	private GameController.CardValidator cardValidator;
 	public bool SelfDestruct = false; // handled within GameController
 	private GameController Game;
+	private bool usesApImmediately;
 
+	public static int FirstWarCard = 7;
+	public static int FirstEnemyCard = 13;
+	
 	// Use this for initialization
 	public static CardLogic[] AllCards = {
 		// HOME
-		new CardLogic (0,0, "+1 troop", (g, _) => { g.AddTroops(1); }), // 0
-		new CardLogic (0,0, "+2 cards", (g, _) => { g.DrawCards(2); }), // 1
-		new CardLogic (2,0, "mobilize 2", (g, _) => { g.AddTroops(2); }),
-		new CardLogic (1,0, "-1 civilian, +2 actions", (g, _) => { g.AddAp(2); }),
+		new CardLogic (0,0, "+3 Civilians", (g, _) => { g.AddRandos(5); }), // 0
+		new CardLogic (2,0, "Deploy 2", (g, _) => { g.AddTroops(2); }),
 		
-		// WAR
-		new CardLogic (0,2, "-2 troops, 2 dmg", (g, t) => { t.AddHp(-2); }, true, EnemyValidator), // 4
-		new CardLogic (0,3, "-3 troops, 3 dmg", (g, t) => { t.AddHp(-3); }, true, EnemyValidator),
-		new CardLogic (0,4, "-4 troop, 6 dmg", (g, t) => { t.AddHp(-6); }, true, EnemyValidator),
-		new CardLogic (0,1, "-1 troop, 2 dmg", (g, t) => { t.AddHp(-2); }, true, EnemyValidator),
-		new CardLogic (0,0, "-1/2 of all troops, all Titans lose 1/2 of their health", (g, _) => {
+		new CardLogic (0,0, "+5 Civilians", (g, _) => { g.AddRandos(5); }), // 0
+		new CardLogic (0,0, "+2 Civilians\n+1 Hero", (g, _) => { g.AddRandos(2); g.newHero(true); }, false), // 1
+		new CardLogic (0,0, "+1 Hero\n+1 Action", (g, _) => { g.newHero(true); }, false, false), // 1
+		new CardLogic (0,0, "+1 Civilian\n+2 Actions", (g, _) => { g.AddRandos(1); g.AddAp(2); }),
+		new CardLogic (0,0, "Deploy All Civilians\n(Single Use)", (g, _) => {
+			g.AddTroops (g.Randos);
+			g.AddRandos (-g.Randos);
+		}, true, true),
+		
+		// WAR		
+		new CardLogic (0,4, "-4 Soldiers\n6 dmg", (g, t) => { t.AddHp(-6); }, true, true, EnemyValidator),
+		new CardLogic (0,2, "-2 Soldiers\n4 dmg", (g, t) => { t.AddHp(-4); }, true, true, EnemyValidator),
+		new CardLogic (0,0, "2 dmg", (g, t) => { t.AddHp(-2); }, true, true, EnemyValidator), // ** SPECIAL ONE **
+		new CardLogic (0,4, "-4 Soldiers\n2 dmg (All Enemies)", (g, t) => {
+			foreach(CardController card in g.EnemyCards) {
+				card.AddHp(-2);
+			}
+		}, true, true),
+		new CardLogic (0,0, "-50% Soldiers\n50% dmg (All)", (g, _) => {
 			g.AddTroops (-g.Troops / 2);
 			foreach(CardController card in g.EnemyCards) {
-				card.AddHp(- card.Hp / 2);
+				card.AddHp(-card.Hp / 2);
 			}
-		}, true, EnemyValidator),
+		}, true, true),
+		new CardLogic (0,1, "-1 Soldier\n1 dmg\nFreezes Enemy", (g, t) => { t.AddHp(-1); t.InvokedAlready = true; }, true, true, EnemyValidator),
 		
 		// ENEMIES
-		new CardLogic (0,2, "-2 troops", (g, _) => {}), // 9
-		new CardLogic (0,3, "-3 troops", (g, _) => {}),
-		new CardLogic (0,0, "+3 health for all enemies", (g, _) => {
+		new CardLogic (0,0, "+2 health\n(All Enemies)", (g, _) => {
 			foreach(CardController card in g.EnemyCards) {
-				card.AddHp(3);
+				card.AddHp(2);
 			}
-		}),
-		new CardLogic (0,1, "-1 action, -1 troop", (g, _) => { g.AddAp(-1); }),
-		new CardLogic (0,0, "-1/2 of all troops", (g, _) => {
+		}, false),
+		new CardLogic (0,4, "-3 Soldiers", (g, _) => {}, false),
+		new CardLogic (0,2, "-2 Soldiers", (g, _) => {}, false),
+		new CardLogic (0,0, "-All Civilians", (g, _) => { g.AddRandos(-g.Randos); }, false, true, EnemyValidator), // BOSS FIGHT
+		new CardLogic (0,0, "-50% Soldiers", (g, _) => {
 			g.AddTroops (-g.Troops / 2);
-		}, true, EnemyValidator), // 13
+		}, false, true, EnemyValidator), // 13
+		new CardLogic (0,1, "-1 Action\n-1 Soldier", (g, _) => { g.AddAp(-1); }, false),
+		new CardLogic (0,0, "Freeze All Heroes\nin the Homeland", (g, _) => {
+			foreach(CardController card in g.HomeCards) {
+				card.InvokedAlready = true;
+			}
+		}, false, true, EnemyValidator), // 13
 	};
 	
-	public CardLogic(int randos, int troops, string description, InvokeFunc invokeFunc, bool selfDestruct = false, GameController.CardValidator cardValidator = null) {
+	// uses AP = false IF Ap drains in the callback (newHero card)
+	public CardLogic(int randos, int troops, string description, InvokeFunc invokeFunc,  bool usesAp = true, bool selfDestruct = false, GameController.CardValidator cardValidator = null) {
 		TroopCost = troops;
 		RandoCost = randos;
 		Description = description;
@@ -57,6 +80,7 @@ public class CardLogic {
 		this.SelfDestruct = selfDestruct;
 		this.invokeFunc = invokeFunc;
 		this.cardValidator = cardValidator;
+		this.usesApImmediately = usesAp;
 	}
 	
 	public void InvokeCard(GameController game) {
@@ -66,7 +90,11 @@ public class CardLogic {
 			game.AddTroops(-TroopCost);
 			// doesn't need a target
 			invokeFunc(game, null);
-			game.AddAp(-1);
+			
+			// otherwise this'll happen in the callback
+			if (usesApImmediately) {
+				game.AddAp(-1);
+			}
 		}
 		else {
 			game.BeginSelection(cardValidator, (c) => {

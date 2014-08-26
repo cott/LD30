@@ -13,11 +13,28 @@ public class CardController : MonoBehaviour {
 	public TextMesh HpText;
 	public SpriteRenderer Outline;
 	
+	public SpriteRenderer Avatar;
+	
+	public GameObject AddButton;
+	public GameObject ReplaceButton;
+	public GameObject NextTurnMarker; // TODO make show up in the beginning
+	
+	public bool InvokedAlready = false;
+	
+	public SpriteRenderer InfoBox;
+	public SpriteRenderer InfoBoxDisabled;
+	public SpriteRenderer Shadow;
+	public SpriteRenderer ShadowHighlight;
+	
+	private CardLogic newHeroCard;
+	
 	GameController game;
+	GameGraphics graphics;
 	
 	// Use this for initialization
 	void Start () {
 		game = GameObject.FindWithTag("GameController").GetComponent<GameController>();
+		graphics = GameObject.FindWithTag("GameController").GetComponent<GameGraphics>();
 		
 		// populate the card logic
 		if (StartingCardLogicNumber >= 0 && StartingCardLogicNumber < CardLogic.AllCards.Length) {
@@ -26,10 +43,16 @@ public class CardController : MonoBehaviour {
 			SetLogic(null);
 		}
 		RefreshEnemyStats();
-	}
-	
-	// Update is called once per frame
-	void Update () {
+		
+		AddButton.GetComponent<ButtonController>().ClickCallback = () => {
+			SetLogic(newHeroCard);
+			game.ExitNewHeroMode();
+		};
+		ReplaceButton.GetComponent<ButtonController>().ClickCallback = () => {
+			SetLogic(newHeroCard);
+			game.AddRandos(1);
+			game.ExitNewHeroMode();
+		};
 	}
 	
 	void OnMouseUpAsButton () {
@@ -43,14 +66,30 @@ public class CardController : MonoBehaviour {
 	
 	public void disableButton(){
 		buttonDisabled = true;
-		Outline.color = new Color(0, 0, 0);
-		Outline.renderer.enabled = true;
+		InfoBox.enabled = false;
+		InfoBoxDisabled.enabled = true;
 	}
 	
 	public void enableButton(){
 		buttonDisabled = false;
-		Outline.color = new Color(255, 255, 0);
-		Outline.renderer.enabled = true;
+		InfoBox.enabled = true;
+		InfoBoxDisabled.enabled = false;
+	}
+
+	public void ShowAddButton (CardLogic warrior)
+	{
+		AddButton.SetActive(true);
+		newHeroCard = warrior;
+	}
+	public void ShowReplaceButton (CardLogic warrior)
+	{
+		ReplaceButton.SetActive(true);
+		newHeroCard = warrior;
+	}
+	public void HideNewHeroButtons (){
+		AddButton.SetActive(false);
+		ReplaceButton.SetActive(false);
+		newHeroCard = null;
 	}
 	
 	public void SetLogic(CardLogic logic){
@@ -60,6 +99,7 @@ public class CardController : MonoBehaviour {
 		} else {
 			CardText.text = Logic.Description;
 		}
+		RefreshGraphics();
 	}
 	public void RefreshEnemyStats(){
 		if (IsEnemy && Logic != null) {
@@ -67,6 +107,25 @@ public class CardController : MonoBehaviour {
 			HpText.text = "HP: " + Hp;
 		} else {
 			HpText.text = "";
+		}
+	}
+	public void RefreshGraphics(){
+		// render monster (if monster)
+		Avatar.enabled = true;
+		if (Logic == null) {
+			Avatar.enabled = false;
+		}
+		else if (Logic.CardNum >= CardLogic.FirstEnemyCard) {
+			int i = (Logic.CardNum - CardLogic.FirstEnemyCard) % graphics.EnemySprites.Length;
+			Avatar.sprite = graphics.EnemySprites[i];
+		} else if (Logic.CardNum >= CardLogic.FirstWarCard) {
+			int i = (Logic.CardNum - CardLogic.FirstWarCard) % graphics.WarSprites.Length;
+			Avatar.sprite = graphics.WarSprites[i];
+		} else if (Logic.CardNum >= 0) {
+			int i = Logic.CardNum % graphics.HomeSprites.Length;
+			Avatar.sprite = graphics.HomeSprites[i]; // TODO  home sprites
+		} else {
+			Avatar.enabled = false;
 		}
 	}
 	public void AddHp(int delta) {
